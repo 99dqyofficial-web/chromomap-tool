@@ -8,7 +8,7 @@ import re
 import math
 
 # --- 页面配置 ---
-st.set_page_config(page_title="染色体图谱 v9.0 (精细布局)", layout="wide")
+st.set_page_config(page_title="染色体图谱 v9.1 (论文版)", layout="wide")
 
 # --- 样式设置 ---
 st.markdown("""
@@ -51,27 +51,24 @@ chrs_per_row = st.sidebar.number_input("每行染色体数量", 1, 50, 10)
 fig_width = st.sidebar.slider("每行图片宽度 (inch)", 4.0, 30.0, 12.0, 0.5)
 row_height = st.sidebar.slider("单行图片高度 (inch)", 2.0, 15.0, 5.0, 0.5)
 
-# Tab 2: 精细布局 (新增核心)
+# Tab 2: 精细布局
 st.sidebar.subheader("2. 精细间距调整 (Layout Tuning)")
 st.sidebar.info("在此微调各元素间的距离")
-# 比例尺与Chr1的距离
-ruler_gap = st.sidebar.slider("↔️ 比例尺-染色体间距", 0.2, 2.0, 0.8, 0.1, help="调节最左侧比例尺数值与第一条染色体之间的空白")
-# 染色体之间的距离
-chr_spacing = st.sidebar.slider("↔️ 染色体间横向间距", 0.0, 3.0, 0.5, 0.1, help="增加染色体之间的水平距离，值越大越稀疏")
-# 上下留白 (控制相对高度感)
-y_pad_top = st.sidebar.slider("↕️ 顶部留白比例", 0.01, 0.2, 0.05, 0.01, help="增加顶部空白，视觉上压缩染色体高度")
-y_pad_bottom = st.sidebar.slider("↕️ 底部留白比例 (用于名称)", 0.01, 0.2, 0.05, 0.01, help="增加底部空白，防止名称重叠")
+ruler_gap = st.sidebar.slider("↔️ 比例尺-染色体间距", 0.2, 2.0, 0.8, 0.1)
+chr_spacing = st.sidebar.slider("↔️ 染色体间横向间距", 0.0, 3.0, 0.5, 0.1)
+y_pad_top = st.sidebar.slider("↕️ 顶部留白比例", 0.01, 0.2, 0.05, 0.01)
+y_pad_bottom = st.sidebar.slider("↕️ 底部留白比例 (用于名称)", 0.01, 0.2, 0.05, 0.01)
 
 # Tab 3: 比例尺样式
 st.sidebar.subheader("3. 左侧比例尺样式")
 show_ruler = st.sidebar.checkbox("显示比例尺", value=True)
 tick_interval = st.sidebar.number_input("刻度间隔 (Mb)", 1, 500, 10)
 ruler_fs = st.sidebar.slider("刻度字号", 8, 20, 12)
-arrow_dist = st.sidebar.slider("↓ 箭头垂直间距", 0.0, 3.0, 0.8, help="箭头距离轴线底部的距离")
+arrow_dist = st.sidebar.slider("↓ 箭头垂直间距", 0.0, 3.0, 0.8)
 
 # Tab 4: 染色体外观
 st.sidebar.subheader("4. 染色体外观")
-chr_width = st.sidebar.slider("染色体宽窄 (相对宽度)", 0.1, 1.5, 0.4, 0.05, help="控制染色体棒的粗细")
+chr_width = st.sidebar.slider("染色体宽窄 (相对宽度)", 0.1, 1.5, 0.4, 0.05)
 chr_fill_color = st.sidebar.color_picker("填充颜色", "#E0E0E0") 
 chr_edge_color = st.sidebar.color_picker("边框颜色", "#000000")
 
@@ -83,8 +80,8 @@ min_marker_mb = st.sidebar.slider("最小显示高度 (Mb)", 0.1, 10.0, 1.0, 0.1
 default_marker_color = st.sidebar.color_picker("默认基因颜色", "#FF0000")
 
 # --- 主界面 ---
-st.title("📍 染色体物理图谱 v9.0")
-st.markdown("*(特性：精细间距控制 / 相对高度调节 / 完美布局)*")
+st.title("📍 染色体物理图谱 v9.1")
+st.markdown("*(特性：更新了符合学术规范的论文写作助手)*")
 
 col1, col2 = st.columns([1, 1])
 
@@ -150,14 +147,14 @@ if chr_len_dict and max(chr_len_dict.values()) > 5000: is_bp_unit = True
 def convert_unit(val): return val / 1_000_000 if is_bp_unit else val
 
 # ==========================================
-# 核心绘图逻辑 v9 (精细布局版)
+# 核心绘图逻辑 v9 (保持不变)
 # ==========================================
 def plot_ideogram_v9(genes, len_dict, 
-                     max_col, row_h, fig_w, # 画布参数
-                     c_width, fill_col, edge_col, # 染色体样式
-                     f_size, min_h_mb, label_off, def_col, # 基因样式
-                     is_ruler, tick_int, r_fs, arr_dist, # 比例尺样式
-                     r_gap, c_spacing, y_pad_t, y_pad_b # 新增：精细布局参数
+                     max_col, row_h, fig_w, 
+                     c_width, fill_col, edge_col, 
+                     f_size, min_h_mb, label_off, def_col,
+                     is_ruler, tick_int, r_fs, arr_dist,
+                     r_gap, c_spacing, y_pad_t, y_pad_b
                      ):
     
     sorted_chrs = sorted(len_dict.keys())
@@ -165,7 +162,6 @@ def plot_ideogram_v9(genes, len_dict,
     num_rows = math.ceil(total_chrs / max_col)
     global_max_len_mb = convert_unit(max(len_dict.values())) if len_dict else 100
     
-    # 计算 Y 轴的上下边界，控制相对高度
     y_top_limit = global_max_len_mb * (1 + y_pad_t) + arr_dist
     y_bottom_limit = -global_max_len_mb * y_pad_b
     
@@ -179,58 +175,41 @@ def plot_ideogram_v9(genes, len_dict,
         current_row_chrs = sorted_chrs[start_idx:end_idx]
         num_in_this_row = len(current_row_chrs)
 
-        # --- 核心：动态计算 X 轴坐标 ---
-        # 设定第一条染色体的中心 X 坐标为 1.0
         base_x = 1.0
-        # 计算本行最后一条染色体的 X 坐标
         final_chr_x = base_x + (num_in_this_row - 1) * (1.0 + c_spacing) if num_in_this_row > 0 else base_x
         
-        # 设定 X 轴范围，保证左右有足够留白
         ax.set_xlim(base_x - r_gap - 0.5, final_chr_x + 1.5)
-        # 设定 Y 轴范围 (倒置)
         ax.set_ylim(y_top_limit, y_bottom_limit)
         ax.axis('off')
 
-        # --- 1. 绘制自定义比例尺 ---
         if is_ruler:
-            # 比例尺位置位于第一条染色体左侧 r_gap 处
             ruler_x = base_x - r_gap
-            
-            # A. 轴线
             line = mlines.Line2D([ruler_x, ruler_x], [0, global_max_len_mb], color='black', linewidth=1.2)
             ax.add_line(line)
-            # B. 刻度
             ticks = list(range(0, int(global_max_len_mb) + 1, int(tick_int)))
             tick_width = 0.1
             for t in ticks:
                 ax.plot([ruler_x, ruler_x + tick_width], [t, t], color='black', linewidth=1)
                 ax.text(ruler_x + tick_width + 0.1, t, str(t), 
                         ha='left', va='center', fontname='Times New Roman', fontsize=r_fs)
-            # C. 单位
             ax.text(ruler_x, y_bottom_limit * 0.5, "Mb", ha='center', va='bottom',
                     fontname='Times New Roman', fontsize=r_fs, fontweight='bold')
-            # D. 箭头
             arrow_y = global_max_len_mb + arr_dist
             ax.plot(ruler_x, arrow_y, marker='v', color='black', markersize=6, clip_on=False)
 
-        # --- 2. 绘制染色体与基因 ---
         for i, chr_name in enumerate(current_row_chrs):
-            # 计算当前染色体的中心 X 坐标，加入间距因子
             x_pos = base_x + i * (1.0 + c_spacing)
             length_mb = convert_unit(len_dict[chr_name])
             
-            # 染色体
             box = patches.FancyBboxPatch(
                 (x_pos - c_width/2, 0), c_width, length_mb,
                 boxstyle=f"round,pad=0.02,rounding_size={c_width/2}", 
                 linewidth=1.5, edgecolor=edge_col, facecolor=fill_col, zorder=1
             )
             ax.add_patch(box)
-            # 名称位置受底部留白影响
             ax.text(x_pos, -global_max_len_mb * y_pad_b * 0.5, chr_name, ha='center', va='bottom', 
                     fontname='Times New Roman', fontsize=f_size+2, fontweight='bold')
             
-            # 基因
             chr_genes = genes[genes['Chr'] == chr_name]
             for _, row in chr_genes.iterrows():
                 start_mb, end_mb = convert_unit(row['Start']), convert_unit(row['End'])
@@ -252,11 +231,10 @@ def plot_ideogram_v9(genes, len_dict,
                         fontname='Times New Roman', style='italic', fontsize=f_size)
 
     plt.tight_layout()
-    # 调整子图间上下间距
     plt.subplots_adjust(hspace=0.3) 
     return fig
 
-# --- 论文生成 (保持不变) ---
+# --- 论文生成 (已更新) ---
 def generate_paper_text(genes, len_dict):
     total_genes = len(genes)
     counts = genes['Chr'].value_counts()
@@ -264,10 +242,16 @@ def generate_paper_text(genes, len_dict):
     max_chr, max_count = counts.idxmax(), counts.max()
     min_chr, min_count = counts.idxmin(), counts.min()
     
-    cn_m = f"""【材料与方法】\n利用 ChromoMap Pro v9.0 对 {total_genes} 个目标基因进行了染色体物理定位分析。基因组位置信息提取自注释文件，单位转换为 Mb。绘图时，染色体长度比例基于实际物理距离，左侧设置垂直比例尺指示位置，基因标记通过颜色编码进行区分。"""
-    cn_r = f"""【结果与分析】\n物理图谱显示（图1），{total_genes} 个基因分布在 {len(counts)} 条染色体上。基因分布呈现明显的不均匀性，其中 {max_chr} 包含最多基因（{max_count} 个），而 {min_chr} 最少（{min_count} 个）。"""
-    en_m = f"""[Materials and Methods]\nChromosomal physical localization of {total_genes} target genes was performed using ChromoMap Pro v9.0. Genomic positions were extracted and converted to Mb. The ideogram was constructed based on actual physical lengths, with a vertical scale bar on the left indicating the positions."""
-    en_r = f"""[Results]\nThe physical map (Fig. 1) revealed that {total_genes} genes were distributed across {len(counts)} chromosomes. The distribution was uneven, with Chromosome {max_chr} containing the highest number of genes ({max_count}), while Chromosome {min_chr} had the fewest ({min_count})."""
+    # --- 核心修改部分 ---
+    cn_m = f"""【材料与方法】\n基因组物理位置可视化基于 Python 编程环境实现。其中，Pandas 库用于基因组位置数据的预处理与格式化。核心图谱调用 Matplotlib 绘图库进行绘制，所有染色体长度及基因分布位置均严格按实际物理距离（单位：Mb）成比例展示，并在图谱左侧设置垂直比例尺以指示物理距离。"""
+    
+    cn_r = f"""【结果与分析】\n物理图谱显示（图1），{total_genes} 个目标基因分布在 {len(counts)} 条染色体上。基因在基因组中的分布呈现不均匀性，其中 {max_chr} 包含的基因数量最多，达到 {max_count} 个；而 {min_chr} 分布最少，仅有 {min_count} 个基因。"""
+    
+    # --- 核心修改部分 (英文版) ---
+    en_m = f"""[Materials and Methods]\nThe visualization of genomic physical positions was implemented in the Python programming environment. The Pandas library was used for preprocessing and formatting genomic location data. The core ideogram was generated using the Matplotlib plotting library, where all chromosome lengths and gene distribution positions were drawn strictly in proportion to their actual physical distances (Mb). A vertical scale bar was included on the left side of the ideogram to indicate physical distances."""
+    
+    en_r = f"""[Results]\nThe physical map (Fig. 1) revealed that {total_genes} target genes were distributed across {len(counts)} chromosomes. The distribution pattern in the genome was uneven, with Chromosome {max_chr} harboring the highest number of genes ({max_count}), whereas Chromosome {min_chr} contained the fewest ({min_count})."""
+    
     return cn_m, cn_r, en_m, en_r
 
 # ==========================================
@@ -282,7 +266,7 @@ if st.button("🚀 生成图谱与论文文本", type="primary"):
             df_genes, chr_len_dict, chrs_per_row, row_height, fig_width, 
             chr_width, chr_fill_color, chr_edge_color, font_size, min_marker_mb, label_offset, default_marker_color,
             show_ruler, tick_interval, ruler_fs, arrow_dist,
-            ruler_gap, chr_spacing, y_pad_top, y_pad_bottom # 传入新参数
+            ruler_gap, chr_spacing, y_pad_top, y_pad_bottom
         )
         st.pyplot(fig)
         
