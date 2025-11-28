@@ -14,7 +14,7 @@ import math
 import numpy as np
 
 # --- 页面配置 ---
-st.set_page_config(page_title="染色体图谱 v12.4 (SVG字体修复)", layout="wide")
+st.set_page_config(page_title="染色体图谱 v12.5 (新增Mako配色)", layout="wide")
 
 # --- 样式设置 (保持不变) ---
 st.markdown("""
@@ -41,8 +41,8 @@ if os.path.exists(font_dir):
     font_files = [os.path.join(font_dir, f) for f in os.listdir(font_dir) if f.endswith('.ttf')]
     for font_file in font_files:
         fm.fontManager.addfont(font_file)
-else:
-    st.error("⚠️ 未找到 'fonts' 文件夹！请确保在项目根目录下创建 'fonts' 文件夹并放入 times.ttf, timesbd.ttf, timesi.ttf 文件。")
+# else:
+#     st.warning("⚠️ 未找到 'fonts' 文件夹，将使用系统默认字体。如需 Times New Roman，请参考文档创建 fonts 文件夹。")
 
 # 2. 设置全局字体
 plt.rcParams['font.family'] = 'serif'
@@ -50,13 +50,32 @@ plt.rcParams['font.serif'] = ['Times New Roman']
 plt.rcParams['mathtext.fontset'] = 'stix'
 plt.rcParams['axes.unicode_minus'] = False
 
-# --- 【核心修改】设置 SVG 导出时不转曲 ---
-# 'none' 表示不将字体转换为路径，保留文本元素
+# --- 设置 SVG 导出时不转曲 ---
 plt.rcParams['svg.fonttype'] = 'none' 
+
+# ==========================================
+# 【核心修改】定义并注册自定义 Mako 色系
+# ==========================================
+# 定义颜色列表：从低密度（少）到高密度（多）
+# 您的要求：#91D5DE(多), #BAE6E1(中), #e3f7e3(少) -> 反序为 [#e3f7e3, #BAE6E1, #91D5DE]
+mako_colors = ['#e3f7e3', '#BAE6E1', '#91D5DE']
+# 创建自定义 colormap 对象
+mako_cmap = mcolors.LinearSegmentedColormap.from_list("Mako", mako_colors)
+
+# 将其注册到 Matplotlib 的 colormap 注册表中，这样就可以通过名字 "Mako" 来调用它
+# 为了防止重复注册报错，先检查一下
+try:
+    cm.get_cmap("Mako")
+except ValueError:
+    # Matplotlib 3.6+ 推荐使用 matplotlib.colormaps.register，但也兼容旧版
+    if hasattr(plt.colormaps, 'register'):
+        plt.colormaps.register(cmap=mako_cmap, name="Mako")
+    else:
+        cm.register_cmap(name="Mako", cmap=mako_cmap)
 
 
 # ==========================================
-# 以下代码保持不变...
+# 以下代码为核心功能实现...
 # ==========================================
 # 核心新函数：计算窗口化基因密度 (Window-based Density)
 def calculate_windowed_density(gff_file_obj, len_dict_bp, window_size_bp):
@@ -161,7 +180,8 @@ window_size_mb_select = st.sidebar.selectbox("选择计算窗口大小 (Mb)", [0
 window_size_bp = int(window_size_mb_select * 1_000_000)
 
 use_density_color = st.sidebar.checkbox("启用窗口密度热力图", value=False, disabled=uploaded_gff is None)
-colormap_name = st.sidebar.selectbox("选择热力图色系", ['YlOrRd', 'Reds', 'Blues', 'viridis', 'plasma', 'inferno'], index=0)
+# --- 【核心修改】在色系选择中添加 'Mako' ---
+colormap_name = st.sidebar.selectbox("选择热力图色系", ['Mako', 'YlOrRd', 'Reds', 'Blues', 'viridis', 'plasma', 'inferno'], index=0)
 
 chr_width = st.sidebar.slider("染色体宽窄", 0.1, 1.5, 0.6, 0.05)
 chr_fill_color = st.sidebar.color_picker("单一填充颜色", "#E0E0E0", disabled=use_density_color)
@@ -181,8 +201,8 @@ min_marker_mb = st.sidebar.slider("最小显示高度 (Mb)", 0.1, 10.0, 1.0, 0.1
 default_marker_color = st.sidebar.color_picker("默认基因颜色", "#FF0000")
 
 # --- 主界面 ---
-st.title("📍 染色体物理图谱 v12.4")
-st.markdown("*(特性：基于固定窗口的基因密度分布热力图 + 标签颜色自定义 + 全局Times New Roman字体 + SVG可编辑)*")
+st.title("📍 染色体物理图谱 v12.5")
+st.markdown("*(特性：新增 Mako 冷色调热力图 + 全局Times New Roman字体 + SVG可编辑)*")
 
 col1, col2 = st.columns([1, 1])
 
@@ -253,6 +273,7 @@ if uploaded_gff and chr_len_dict and use_density_color:
             st.sidebar.success(f"计算完成! 最大密度: {max_density_val:.1f} Genes/Mb (窗口: {window_size_mb_select}Mb)")
             # 创建颜色标准化对象 (从0到最大密度)
             density_norm = mcolors.Normalize(vmin=0, vmax=max_density_val)
+            # --- 【核心修改】获取用户选择的 colormap 对象（包括自定义的 Mako） ---
             density_cmap_obj = cm.get_cmap(colormap_name)
         elif max_density_val == 0:
              st.sidebar.warning("密度计算结果全为0，请检查 GFF 文件内容或染色体名称匹配。")
