@@ -11,7 +11,7 @@ import math
 import numpy as np
 
 # --- 页面配置 ---
-st.set_page_config(page_title="染色体图谱 v12.1 (标签颜色)", layout="wide")
+st.set_page_config(page_title="染色体图谱 v12.2 (字体优化)", layout="wide")
 
 # --- 样式设置 ---
 st.markdown("""
@@ -26,10 +26,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 字体全局配置 ---
+# --- 【关键修改】字体全局配置 ---
+# 将全局字体设置为 Times New Roman
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = ['Times New Roman']
+# 确保数学公式也使用类似风格的字体
 plt.rcParams['mathtext.fontset'] = 'stix'
+# 解决负号显示问题
 plt.rcParams['axes.unicode_minus'] = False
 
 # ==========================================
@@ -148,17 +151,17 @@ st.sidebar.subheader("5. 基因标记 (智能防重叠)")
 enable_avoidance = st.sidebar.checkbox("启用智能防重叠", value=True)
 label_spacing = st.sidebar.slider("标签最小垂直间距 (Mb)", 0.1, 5.0, 1.5, 0.1)
 
-# --- 【改动1】新增标签颜色选择器 ---
-label_color = st.sidebar.color_picker("基因标签颜色", "#000000", help="设置基因名称标签的字体颜色")
+# 新增标签颜色选择器
+label_color = st.sidebar.color_picker("标签文字颜色", "#000000", help="设置基因名称标签的字体颜色")
 
 font_size = st.sidebar.slider("标签字号", 8, 24, 11)
 label_offset_x = st.sidebar.slider("标签引线横向长度", 0.0, 2.0, 0.3)
 min_marker_mb = st.sidebar.slider("最小显示高度 (Mb)", 0.1, 10.0, 1.0, 0.1)
-default_marker_color = st.sidebar.color_picker("基因在染色体上的颜色", "#FF0000")
+default_marker_color = st.sidebar.color_picker("默认基因颜色", "#FF0000")
 
 # --- 主界面 ---
-st.title("📍 染色体物理图谱 v12.1")
-st.markdown("*(特性：基于固定窗口的基因密度分布热力图 + 标签颜色自定义)*")
+st.title("📍 染色体物理图谱 v12.2")
+st.markdown("*(特性：基于固定窗口的基因密度分布热力图 + 标签颜色自定义 + 全局Times New Roman字体)*")
 
 col1, col2 = st.columns([1, 1])
 
@@ -240,7 +243,7 @@ if uploaded_gff and chr_len_dict and use_density_color:
 def plot_ideogram_v12(genes, len_dict, 
                      max_col, row_h, fig_w, 
                      c_width, default_fill, edge_col, 
-                     f_size, min_h_mb, label_off_x, def_col, lbl_color, # 【改动2】新增 lbl_color 参数
+                     f_size, min_h_mb, label_off_x, def_col, lbl_color, # 新增 lbl_color 参数
                      is_ruler, tick_int, r_fs, arr_dist,
                      r_gap, c_spacing, y_pad_t, y_pad_b,
                      do_avoid, lbl_spacing,
@@ -279,7 +282,9 @@ def plot_ideogram_v12(genes, len_dict,
             ticks = list(range(0, int(global_max_len_mb) + 1, int(tick_int)))
             for t in ticks:
                 ax.plot([ruler_x, ruler_x + 0.1], [t, t], color='black', linewidth=1)
+                # 比例尺刻度数字使用 Times New Roman
                 ax.text(ruler_x + 0.2, t, str(t), ha='left', va='center', fontname='Times New Roman', fontsize=r_fs)
+            # 比例尺单位使用 Times New Roman 粗体
             ax.text(ruler_x, y_bottom_limit * 0.5, "Mb", ha='center', va='bottom', fontname='Times New Roman', fontsize=r_fs, fontweight='bold')
             ax.plot(ruler_x, global_max_len_mb + arr_dist, marker='v', color='black', markersize=6, clip_on=False)
 
@@ -331,7 +336,7 @@ def plot_ideogram_v12(genes, len_dict,
                 )
                 ax.add_patch(box)
 
-            # 绘制名称
+            # 绘制名称，使用 Times New Roman 粗体
             ax.text(x_pos, -global_max_len_mb * y_pad_b * 0.5, chr_name, ha='center', va='bottom', 
                     fontname='Times New Roman', fontsize=f_size+2, fontweight='bold')
             
@@ -355,7 +360,7 @@ def plot_ideogram_v12(genes, len_dict,
                 ax.add_patch(rect)
                 line_end_x = x_pos + c_width/2 + label_off_x
                 ax.plot([x_pos + c_width/2, line_end_x], [row['center'], row['label_y']], color='black', lw=0.5, zorder=1)
-                # --- 【改动3】使用 lbl_color 设置文本颜色 ---
+                # --- 【关键修改】设置基因标签为 Times New Roman 和 斜体 ---
                 ax.text(line_end_x + 0.05, row['label_y'], name, ha='left', va='center', 
                         fontname='Times New Roman', style='italic', fontsize=f_size, color=lbl_color)
 
@@ -367,9 +372,10 @@ def plot_ideogram_v12(genes, len_dict,
         cbar_ax = fig.add_axes([0.3, 0.02, 0.4, 0.015])
         cb = fig.colorbar(cm.ScalarMappable(norm=d_norm, cmap=d_cmap_obj), 
                           cax=cbar_ax, orientation='horizontal')
-        # 更新 Label，注明窗口大小
+        # 更新 Label，使用 Times New Roman
         cb.set_label(f'Gene Density (Genes / {win_size_mb} Mb Window)', fontname='Times New Roman', fontsize=f_size)
         cb.ax.tick_params(labelsize=f_size*0.9)
+        # 确保刻度标签也是 Times New Roman
         for l in cb.ax.get_xticklabels(): l.set_fontname('Times New Roman')
         plt.subplots_adjust(bottom=0.1) 
 
@@ -401,7 +407,7 @@ def generate_paper_text(genes, len_dict, do_avoid, use_density, win_size_mb):
 # 主运行区
 # ==========================================
 st.markdown("---")
-if st.button("🚀 生成图谱与论文文本（如果插入了大文件加载会比较久）", type="primary"):
+if st.button("🚀 生成图谱与论文文本", type="primary"):
     if not chr_len_dict: st.error("❌ 请先输入染色体长度（必需）！")
     elif df_genes.empty: st.error("❌ 请输入目标基因数据！")
     else:
@@ -411,7 +417,7 @@ if st.button("🚀 生成图谱与论文文本（如果插入了大文件加载�
         # 调用绘图函数，传入新的 label_color 参数
         fig = plot_ideogram_v12(
             df_genes, chr_len_dict, chrs_per_row, row_height, fig_width, 
-            chr_width, chr_fill_color, chr_edge_color, font_size, min_marker_mb, label_offset_x, default_marker_color, label_color, # 【改动4】传入新参数
+            chr_width, chr_fill_color, chr_edge_color, font_size, min_marker_mb, label_offset_x, default_marker_color, label_color, # 传入新参数
             show_ruler, tick_interval, ruler_fs, arrow_dist,
             ruler_gap, chr_spacing, y_pad_top, y_pad_bottom,
             enable_avoidance, label_spacing,
