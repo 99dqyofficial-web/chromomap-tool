@@ -5,18 +5,22 @@ import matplotlib.patches as patches
 import matplotlib.lines as mlines
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
+# --- 导入字体管理器和操作系统路径库 ---
+import matplotlib.font_manager as fm
+import os
 from io import BytesIO
 import re
 import math
 import numpy as np
 
 # --- 页面配置 ---
-st.set_page_config(page_title="染色体图谱 v12.2 (字体优化)", layout="wide")
+st.set_page_config(page_title="染色体图谱 v12.4 (SVG字体修复)", layout="wide")
 
-# --- 样式设置 ---
+# --- 样式设置 (保持不变) ---
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff; }
+    /* 网页界面的字体设置，与 Matplotlib 无关，但也建议设置 */
     html, body, [class*="css"] { font-family: 'Times New Roman', serif; }
     h1, h2, h3, .stMarkdown, .stText, .stButton button { font-family: 'Times New Roman', serif !important; color: #000; }
     .stDataFrame { font-family: 'Times New Roman', serif; }
@@ -26,18 +30,35 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 【关键修改】字体全局配置 ---
-# 将全局字体设置为 Times New Roman
+# ==========================================
+# Matplotlib 字体全局强制加载与配置
+# ==========================================
+# 1. 加载本地字体文件
+current_dir = os.path.dirname(os.path.abspath(__file__))
+font_dir = os.path.join(current_dir, 'fonts')
+
+if os.path.exists(font_dir):
+    font_files = [os.path.join(font_dir, f) for f in os.listdir(font_dir) if f.endswith('.ttf')]
+    for font_file in font_files:
+        fm.fontManager.addfont(font_file)
+else:
+    st.error("⚠️ 未找到 'fonts' 文件夹！请确保在项目根目录下创建 'fonts' 文件夹并放入 times.ttf, timesbd.ttf, timesi.ttf 文件。")
+
+# 2. 设置全局字体
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = ['Times New Roman']
-# 确保数学公式也使用类似风格的字体
 plt.rcParams['mathtext.fontset'] = 'stix'
-# 解决负号显示问题
 plt.rcParams['axes.unicode_minus'] = False
 
+# --- 【核心修改】设置 SVG 导出时不转曲 ---
+# 'none' 表示不将字体转换为路径，保留文本元素
+plt.rcParams['svg.fonttype'] = 'none' 
+
+
+# ==========================================
+# 以下代码保持不变...
 # ==========================================
 # 核心新函数：计算窗口化基因密度 (Window-based Density)
-# ==========================================
 def calculate_windowed_density(gff_file_obj, len_dict_bp, window_size_bp):
     gff_cols = ['seqid', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
     try:
@@ -160,8 +181,8 @@ min_marker_mb = st.sidebar.slider("最小显示高度 (Mb)", 0.1, 10.0, 1.0, 0.1
 default_marker_color = st.sidebar.color_picker("默认基因颜色", "#FF0000")
 
 # --- 主界面 ---
-st.title("📍 染色体物理图谱 v12.2")
-st.markdown("*(特性：基于固定窗口的基因密度分布热力图 + 标签颜色自定义 + 全局Times New Roman字体)*")
+st.title("📍 染色体物理图谱 v12.4")
+st.markdown("*(特性：基于固定窗口的基因密度分布热力图 + 标签颜色自定义 + 全局Times New Roman字体 + SVG可编辑)*")
 
 col1, col2 = st.columns([1, 1])
 
@@ -243,7 +264,7 @@ if uploaded_gff and chr_len_dict and use_density_color:
 def plot_ideogram_v12(genes, len_dict, 
                      max_col, row_h, fig_w, 
                      c_width, default_fill, edge_col, 
-                     f_size, min_h_mb, label_off_x, def_col, lbl_color, # 新增 lbl_color 参数
+                     f_size, min_h_mb, label_off_x, def_col, lbl_color,
                      is_ruler, tick_int, r_fs, arr_dist,
                      r_gap, c_spacing, y_pad_t, y_pad_b,
                      do_avoid, lbl_spacing,
@@ -282,9 +303,7 @@ def plot_ideogram_v12(genes, len_dict,
             ticks = list(range(0, int(global_max_len_mb) + 1, int(tick_int)))
             for t in ticks:
                 ax.plot([ruler_x, ruler_x + 0.1], [t, t], color='black', linewidth=1)
-                # 比例尺刻度数字使用 Times New Roman
                 ax.text(ruler_x + 0.2, t, str(t), ha='left', va='center', fontname='Times New Roman', fontsize=r_fs)
-            # 比例尺单位使用 Times New Roman 粗体
             ax.text(ruler_x, y_bottom_limit * 0.5, "Mb", ha='center', va='bottom', fontname='Times New Roman', fontsize=r_fs, fontweight='bold')
             ax.plot(ruler_x, global_max_len_mb + arr_dist, marker='v', color='black', markersize=6, clip_on=False)
 
@@ -336,7 +355,7 @@ def plot_ideogram_v12(genes, len_dict,
                 )
                 ax.add_patch(box)
 
-            # 绘制名称，使用 Times New Roman 粗体
+            # 绘制名称
             ax.text(x_pos, -global_max_len_mb * y_pad_b * 0.5, chr_name, ha='center', va='bottom', 
                     fontname='Times New Roman', fontsize=f_size+2, fontweight='bold')
             
@@ -360,7 +379,7 @@ def plot_ideogram_v12(genes, len_dict,
                 ax.add_patch(rect)
                 line_end_x = x_pos + c_width/2 + label_off_x
                 ax.plot([x_pos + c_width/2, line_end_x], [row['center'], row['label_y']], color='black', lw=0.5, zorder=1)
-                # --- 【关键修改】设置基因标签为 Times New Roman 和 斜体 ---
+                # --- 使用 lbl_color 设置文本颜色 ---
                 ax.text(line_end_x + 0.05, row['label_y'], name, ha='left', va='center', 
                         fontname='Times New Roman', style='italic', fontsize=f_size, color=lbl_color)
 
@@ -372,10 +391,9 @@ def plot_ideogram_v12(genes, len_dict,
         cbar_ax = fig.add_axes([0.3, 0.02, 0.4, 0.015])
         cb = fig.colorbar(cm.ScalarMappable(norm=d_norm, cmap=d_cmap_obj), 
                           cax=cbar_ax, orientation='horizontal')
-        # 更新 Label，使用 Times New Roman
+        # 更新 Label，注明窗口大小
         cb.set_label(f'Gene Density (Genes / {win_size_mb} Mb Window)', fontname='Times New Roman', fontsize=f_size)
         cb.ax.tick_params(labelsize=f_size*0.9)
-        # 确保刻度标签也是 Times New Roman
         for l in cb.ax.get_xticklabels(): l.set_fontname('Times New Roman')
         plt.subplots_adjust(bottom=0.1) 
 
